@@ -89,9 +89,8 @@ class Game {
     this.placeInTable(y, x);
 
     // check for win
-    if (this.checkForWin([y, x], 4, this.currPlayer, this.board, [this.horizontal, this.vertical, this.diagonal_1, this.diagonal_2])) {
-      // Using setTimeout to skip the rendering and show the player choice before show the alert
-      return setTimeout(() => this.endGame(`Player ${this.currPlayer.color} won!`));
+    if (this.checkForWin()) {
+      return this.endGame(`Player ${this.currPlayer} won!`);
     }
 
     // check for tie
@@ -103,49 +102,37 @@ class Game {
     this.currPlayer = this.currPlayer === this.p1 ? this.p2 : this.p1;
   }
 
-  horizontal = (row, col) => [[row, col-3], [row, col-2], [row, col-1], [row, col], [row, col+1], [row, col+2], [row, col+3]]
-  vertical = (row, col) => [[row-3, col], [row-2, col], [row-1, col], [row, col], [row+1, col], [row+2, col], [row+3, col]]
-  diagonal_1 = (row, col) => [[row-3, col-3], [row-2, col-2], [row-1, col-1], [row, col], [row+1, col+1], [row+2, col+2], [row+3, col+3]];
-  diagonal_2 = (row, col) => [[row+3, col-3], [row+2, col-2], [row+1, col-1], [row, col], [row-1, col+1], [row-2, col+2], [row-3, col+3]];
+  checkForWin() {
+    const _win = (cells) => {
+      // Check four cells to see if they're all color of current player
+      //  - cells: list of four (y, x) cells
+      //  - returns true if all are legal coordinates & all match currPlayer
 
-  checkForWin = (target, minMatch, player, board, patterns) => {
-    const checks = patterns.map(pattern => this.checkPattern(target, minMatch, player, board, pattern));
-    return checks.some(value => value);
-  }
+      return cells.every(
+        ([y, x]) =>
+          y >= 0 &&
+          y < this.height &&
+          x >= 0 &&
+          x < this.width &&
+          this.board[y][x] === this.currPlayer
+      );
+    }
 
-  checkPattern = (target, minMatch, player, board, pattern) => {
-    const values = this.applyPattern(target, board, pattern);
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        // get "check list" of 4 cells (starting here) for each of the different
+        // ways to win
+        const horiz = [[y, x], [y, x + 1], [y, x + 2], [y, x + 3]];
+        const vert = [[y, x], [y + 1, x], [y + 2, x], [y + 3, x]];
+        const diagDR = [[y, x], [y + 1, x + 1], [y + 2, x + 2], [y + 3, x + 3]];
+        const diagDL = [[y, x], [y + 1, x - 1], [y + 2, x - 2], [y + 3, x - 3]];
 
-    return this.getMaxSequentialOccurrence(player, values) >= minMatch;
-  }
-  applyPattern = (target, board, pattern) => {
-    const [row, col] = target;
-    // [[x,y-3], [x,y-2], [x,y-1], [x,y], [x,y+1], [x,y+2], [x,y+3]]
-    const coordinates = pattern(row, col);
-    // [[1,-1], [1,0], [1,1], [1,2], [1,3], [1,4], [1,5]]
-
-    return coordinates.map(([row, col]) => (board[row] || [])[col]);
-    // [undefined, player1, undefined, player2, player2, player2, player2]
-  };
-  getMaxSequentialOccurrence = (player, values) => {
-    let maxAccumulator = 0;
-    // playerColor = black;
-    const playerColor = player.color;
-    // player1 = {"color": "blue"};
-    // player2 = {"color": "black"};
-    // values = [undefined, player1, undefined, player2, player2, player2, player2];
-	values.reduce((accumulator, current) => {
-	    const currentColor = (current || {}).color;
-        if (currentColor !== playerColor) {
-            return 0;
+        // find winner (only checking each win-possibility as needed)
+        if (_win(horiz) || _win(vert) || _win(diagDR) || _win(diagDL)) {
+          return true;
         }
-        const newAccumulator = accumulator + 1;
-	    maxAccumulator = Math.max(maxAccumulator, newAccumulator);
-
-        return newAccumulator;
-    }, 0);
-
-    return maxAccumulator;
+      }
+    }
   }
 }
 
@@ -159,6 +146,7 @@ button.addEventListener('click', function () {
   const playerOneColor = document.getElementById('color-player-1');
   const playerTwoColor = document.getElementById('color-player-2');
   if (playerOneColor.value && playerTwoColor.value) {
+    console.log(playerOneColor.value);
     const playerOne = new Player(playerOneColor.value);
     const playerTwo = new Player(playerTwoColor.value);
     new Game(6, 7, playerOne, playerTwo);
